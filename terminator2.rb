@@ -59,8 +59,8 @@ usage if !terminate_after_hours
         #puts "Warning owner of => #{svr.nickname}\n"     
       elsif (current_time > life_time)
         puts "Terminating => #{svr.nickname}\n"
-        #svr.stop
-        #`mail -s "#{svr.nickname} has been destroyed by the Terminator. Be sure to lock or put "save" somewhere in the nickname to prevent this from happening again." services@rightscale.com`
+        svr.stop
+        `mail -s "#{svr.nickname} has been destroyed by the Terminator. Be sure to lock or put "save" somewhere in the nickname to prevent this from happening again." services@rightscale.com`
       end
     end
   end
