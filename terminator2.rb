@@ -22,7 +22,7 @@ threshold = Time.now
        last updated: #{last_updated_time}
        life time allowed: #{life_time}
        warning time: #{warning}\n" unless debug == 'false'
-      if (threshold < warning) && (threshold < life_time)
+      if (threshold > warning) && (threshold < life_time)
         #warn peep
         puts "Warning owner of => #{svr.nickname}\n"     
       elsif (threshold > life_time)
