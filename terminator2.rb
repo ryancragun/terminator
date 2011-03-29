@@ -30,6 +30,7 @@ terminate_after_hours = nil
 protection_word = "save"
 debug = 'false'
 current_time = Time.now
+tag_prefix = "terminator:discover_time="
 
 #Define options
 opts = GetoptLong.new(
@@ -72,6 +73,40 @@ usage unless terminate_after_hours
         svr.stop
         `echo 'Be sure to lock or put "save" somewhere in the nickname to prevent this from happening again.' | mail -s "#{svr.nickname} has been destroyed by the Terminator." terminator@rightscale.com`
       end
+    end
+  end
+end
+
+@arrays = Ec2ServerArray.find_all.select { |a| a.active_instances_count != 0 }
+@arrays.each do |ary|
+  unless ary.nickname.downcase.include?(protection_word)
+    @flagged_instances = 0
+    instances = @arrays.instances
+    instances.each do |i|
+      #discover instance tags
+      local_tags = Tag.search_by_href(i['href']
+      #check for a match
+      local_tags.each do |tag|
+        matched_tag = tag[:name] if tag[:name].include?(tag_prefix) end
+      end
+      #set terminator tag if not match exists
+      unless matched_tag do
+        tag_contents = [tag_prefix + current_time.to_s]
+        Tag.set(i['href'], tag_contents)
+      end
+      #compare timestammps if a match and flag the server
+      if matched_tag do
+        tag_timestamp = Time.parse(matched_tag.split("=").last)
+        life_time = tag_timestamp + (terminate_after_hours * 60 * 60) 
+        @flagged_instances += 1 if (current_time > life_time) end
+      end 
+    end
+    if (@flagged_instances >= (ary.active_instances_count.to_i / 2))
+      ary.active = false
+      ary.save
+      ary.terminate_all
+      puts "Terminating => #{ary.nickname}\n"
+      `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
     end
   end
 end
