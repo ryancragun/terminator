@@ -79,42 +79,45 @@ end
 
 @arrays = Ec2ServerArray.find_all.select { |a| a.active_instances_count != 0 }
 @arrays.each do |ary|
-  unless ary.nickname.downcase.include?(protection_word)
+  unless ary.nickname.downcase.include?(protection_word) || ary.cloud_id == 232
     @flagged_instances = 0
     instances = ary.instances
     instances.each do |inst|
       #discover instance tags
-      @matched_tag = nil
+      matched_tag = nil
       local_tags = Tag.search_by_href(inst['href'])
       #check for a match
       local_tags.each do |tag|
         if tag['name'].include?(tag_prefix)
-          @matched_tag = tag['name'].to_s
-          puts @matched_tag if debug
+          matched_tag = tag['name'].to_s
+          puts "Found matching tag #{matched_tag} on #{inst['nickname']}" if debug
         end
       end
-      #set terminator tag if not match exists
-      if @matched_tag == nil
+      #set terminator tag if no match exists
+      if matched_tag == nil
         tag_contents = [tag_prefix + current_time.to_s]
         Tag.set(inst['href'], tag_contents)
+        puts "No tag found for instance #{inst['nickname']}, setting tag now..." if debug
       end
-      #compare timestammps if a match and flag the server
-      if @matched_tag != nil
-        tag_timestamp = Time.parse(@matched_tag.split("=").last)
+      #compare timestammps for a match and flag the server if it's too old
+      if matched_tag != nil
+        tag_timestamp = Time.parse(matched_tag.split("=").last)
         life_time = tag_timestamp + (terminate_after_hours * 60 * 60) 
-        @flagged_instances += 1 if (current_time > life_time)
+        if (current_time > life_time)
+          @flagged_instances += 1
+          puts "Instance #{inst['nickname']} flagged for age.." if debug
+        end
       end 
     end
+    puts "Flagged instance count: #{@flagged_instances}"
+    puts "Active instance count: #{ary.active_instances_count.to_s}"
     if (@flagged_instances >= (ary.active_instances_count.to_f / 2))
-      puts "terminatation initiated"
-      puts "Flagged instance count: #{@flagged_instances}"
-      puts "Active instance count: #{ary.active_instances_count.to_s}"
-      #ary.active = false
-      #ary.save
-      #ary.terminate_all
-      #puts "Terminating => #{ary.nickname}\n"
-      #`echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
+      puts "Terminatation initiated.."
+      ary.active = false
+      ary.save
+      ary.terminate_all
+      puts "Terminating => #{ary.nickname}\n"
+      `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
     end
   end
 end
-
