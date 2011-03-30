@@ -11,7 +11,7 @@ def usage
   puts("#{$0} -h <hours> [-w <safe word> -d]")
   puts("    -h: The number of hours to use for threshold")
   puts("    -w: Safe word that prevents a server from being shut down.  Required to be in nickname")
-  puts("    -d: Enables debug logging"
+  puts("    -d: Enables debug logging")
   exit
 end
 
@@ -28,7 +28,7 @@ end
 #Define default parameters
 terminate_after_hours = nil
 protection_word = "save"
-debug = 'false'
+debug = false
 current_time = Time.now
 tag_prefix = "terminator:discover_time="
 
@@ -44,7 +44,7 @@ opts.each do |opt, arg|
     when '--hours'
       terminate_after_hours = arg.to_i
     when '--debug'
-      debug = 'true'
+      debug = true
     when '--safeword'
       protection_word = arg
   end
@@ -63,7 +63,7 @@ usage unless terminate_after_hours
       last_updated_time = Time.parse(settings['updated_at'].to_s)
       life_time = last_updated_time + (terminate_after_hours * 60 * 60)
       warning = life_time - ( 3 * (60 * 60)) #warns 3 hours before termination
-      display_debug_info(settings['nickname'], settings['locked'], last_updated_time, life_time, warning) unless debug == 'false'
+      display_debug_info(settings['nickname'], settings['locked'], last_updated_time, life_time, warning) if debug
       if (current_time > warning) && (current_time < life_time)
         #Eventually I'd like to warn the user who launched the server before we shut it down.
 	      #Currently that is not exposed through the API so this isn't possible.
@@ -81,32 +81,40 @@ end
 @arrays.each do |ary|
   unless ary.nickname.downcase.include?(protection_word)
     @flagged_instances = 0
-    instances = @arrays.instances
-    instances.each do |i|
+    instances = ary.instances
+    instances.each do |inst|
       #discover instance tags
-      local_tags = Tag.search_by_href(i['href']
+      @matched_tag = nil
+      local_tags = Tag.search_by_href(inst['href'])
       #check for a match
       local_tags.each do |tag|
-        matched_tag = tag[:name] if tag[:name].include?(tag_prefix) end
+        if tag['name'].include?(tag_prefix)
+          @matched_tag = tag['name'].to_s
+          puts @matched_tag if debug
+        end
       end
       #set terminator tag if not match exists
-      unless matched_tag do
+      if @matched_tag == nil
         tag_contents = [tag_prefix + current_time.to_s]
-        Tag.set(i['href'], tag_contents)
+        Tag.set(inst['href'], tag_contents)
       end
       #compare timestammps if a match and flag the server
-      if matched_tag do
-        tag_timestamp = Time.parse(matched_tag.split("=").last)
+      if @matched_tag != nil
+        tag_timestamp = Time.parse(@matched_tag.split("=").last)
         life_time = tag_timestamp + (terminate_after_hours * 60 * 60) 
-        @flagged_instances += 1 if (current_time > life_time) end
+        @flagged_instances += 1 if (current_time > life_time)
       end 
     end
-    if (@flagged_instances >= (ary.active_instances_count.to_i / 2))
-      ary.active = false
-      ary.save
-      ary.terminate_all
-      puts "Terminating => #{ary.nickname}\n"
-      `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
+    if (@flagged_instances >= (ary.active_instances_count.to_f / 2))
+      puts "terminatation initiated"
+      puts "Flagged instance count: #{@flagged_instances}"
+      puts "Active instance count: #{ary.active_instances_count.to_s}"
+      #ary.active = false
+      #ary.save
+      #ary.terminate_all
+      #puts "Terminating => #{ary.nickname}\n"
+      #`echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
     end
   end
 end
+
