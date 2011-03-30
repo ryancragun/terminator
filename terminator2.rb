@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Terminator2, rob & ryan
+# Terminator2, Ryan with a bit of rob sprinkled through the early version
 
 require 'rubygems'
 require 'rest_connection'
