@@ -15,22 +15,14 @@ def usage
   exit
 end
 
-# Define Debug info
-def display_debug_info(nickname, locked, last_update, life_time, warning)
-  puts("Debug info:")
-  puts("Server Nickname: #{nickname}")
-  puts("Locked status is: #{locked}")
-  puts("Last updated at: #{last_update}")
-  puts("Will terminate after: #{life_time}")
-  puts("Warn at: #{warning}")
-end 
-
 #Define default parameters
 terminate_after_hours = nil
 protection_word = "save"
 debug = false
+start_time = Time.now
 current_time = Time.now
-tag_prefix = "terminator:discover_time="
+tag_prefix = "terminator:discovery_time="
+min_id=958000
 
 #Define options
 opts = GetoptLong.new(
@@ -55,24 +47,50 @@ end
 usage unless terminate_after_hours
 
 # Main
-@servers = Server.find_all.select { |x| x.state != "stopped" }
+@servers = Server.find_all.select { |x| x.state != "booting"}
 @servers.each do |svr|
-  unless svr.nickname.downcase.include?(protection_word)
-    settings = svr.settings
-    unless svr.settings['locked'].to_s == "true"
-      last_updated_time = Time.parse(settings['updated_at'].to_s)
-      life_time = last_updated_time + (terminate_after_hours * 60 * 60)
-      warning = life_time - ( 3 * (60 * 60)) #warns 3 hours before termination
-      display_debug_info(settings['nickname'], settings['locked'], last_updated_time, life_time, warning) if debug
-      if (current_time > warning) && (current_time < life_time)
-        #Eventually I'd like to warn the user who launched the server before we shut it down.
-	      #Currently that is not exposed through the API so this isn't possible.
-        #puts "Warning owner of => #{svr.nickname}\n"     
-      elsif (current_time > life_time)
-        puts "Terminating => #{svr.nickname}\n"
-        svr.stop
-        `echo 'Be sure to lock or put "save" somewhere in the nickname to prevent this from happening again.' | mail -s "#{svr.nickname} has been destroyed by the Terminator." terminator@rightscale.com`
+  next if svr.nickname.downcase.include?(protection_word)
+  next if svr.href.split("/").last.to_i < min_id
+  settings = svr.settings
+  next if svr.settings['locked'].to_s == "true"
+  next if (start_time.year != Time.parse(settings['updated_at'].to_s).year)
+  current_href = svr.current_instance_href
+  matched_tag = false
+  tag_timestamp = nil
+
+  if svr.state.to_s == "stopped"
+    next_tags = Tag.search_by_href(svr.href)
+    next_tags.each do |tag|
+      if tag['name'].include?(tag_prefix) && svr.state.to_s == "stopped"
+        Tag.unset(svr.href,[tag['name'].to_s])
+        puts "Deleting tag: \"#{tag['name'].to_s}\" on stopped server" if debug
       end
+    end
+  else
+    current_tags = Tag.search_by_href(current_href)
+    current_tags.each do |tag|
+      if svr.state.to_s == "operational" && tag['name'].to_s.include?(tag_prefix)
+        tag_timestamp = Time.parse(tag['name'].split("=").last)
+        matched_tag = true
+        puts "Found matching tag: \"#{tag['name'].to_s}" if debug
+        break
+      end
+    end
+  end 
+      
+  unless matched_tag || svr.state.to_s == "stopped"
+    tag_contents = [tag_prefix + current_time.to_s]
+    puts "No tag found for: \"#{svr.nickname.to_s}\", setting tag now..." if debug
+    Tag.set(current_href, tag_contents)
+  end
+
+  if matched_tag
+    life_time = tag_timestamp + (terminate_after_hours * 60 * 60) 
+    current_time = Time.now
+    if (current_time > life_time)
+      puts "Terminating => #{svr.nickname}\n"
+      #svr.stop
+      `echo 'Be sure to lock the server or put "save" somewhere in the nickname to prevent pwnage from the terminator' | mail -s "#{svr.nickname} has been destroyed by the Terminator." terminator@rightscale.com`
     end
   end
 end
@@ -121,3 +139,6 @@ end
     end
   end
 end
+
+time_taken = ((Time.now - start_time)/60)
+puts "Total time taken was: #{time_taken} minutes"
