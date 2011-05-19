@@ -1,5 +1,10 @@
 #!/usr/bin/env ruby
-# Terminator2, Ryan with a bit of rob sprinkled through the early version
+
+# Terminator2, Ryan Cragun
+# Inspired by the original Terminator by Rob Carr
+# Finds and terminates servers and server arrays withing RightScale account based on passed parameters.
+# Should be run as a cron daemon at least hourly.
+# Requires rest_connection to be pre-configured with RightScale credentials.
 
 require 'rubygems'
 require 'rest_connection'
@@ -8,10 +13,12 @@ require 'getoptlong'
 
 # Define usage
 def usage
-  puts("#{$0} -h <hours> [-w <safe word> -d]")
+  puts("#{$0} -h <hours> [-w <safe word> -d -i <minimum server id> -m <email destination>]")
   puts("    -h: The number of hours to use for threshold")
   puts("    -w: Safe word that prevents a server from being shut down.  Required to be in nickname")
   puts("    -d: Enables debug logging")
+  puts("    -i: Sets the minimum server ID that we'll check")
+  puts("    -m: Recipient email address to send termination notifications to")
   exit
 end
 
@@ -22,13 +29,16 @@ debug = false
 start_time = Time.now
 current_time = Time.now
 tag_prefix = "terminator:discovery_time="
-min_id=958000
+min_id = 830000 # We wont check servers that have an ID lesser than this
+termination_email = "terminator@rightscale.com"
 
 #Define options
 opts = GetoptLong.new(
-    [ '--hours', '-h', GetoptLong::REQUIRED_ARGUMENT ],
-    [ '--safeword', '-w',  GetoptLong::OPTIONAL_ARGUMENT ],
-    [ '--debug', '-d',  GetoptLong::OPTIONAL_ARGUMENT ]
+  [ '--hours', '-h', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--safeword', '-w',  GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--debug', '-d',  GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--id', '-i',  GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--mailto', '-m',  GetoptLong::OPTIONAL_ARGUMENT ]
 )
 
 opts.each do |opt, arg|
@@ -39,6 +49,10 @@ opts.each do |opt, arg|
       debug = true
     when '--safeword'
       protection_word = arg
+    when '--id'
+      min_id = arg.to_i
+    when '--mailto'
+      termination_email = arg
   end
   arg.inspect
 end
@@ -52,7 +66,7 @@ usage unless terminate_after_hours
   next if svr.nickname.downcase.include?(protection_word)
   next if svr.href.split("/").last.to_i < min_id
   settings = svr.settings
-  next if svr.settings['locked'].to_s == "true"
+  next if settings['locked'].to_s == "true"
   next if (start_time.year != Time.parse(settings['updated_at'].to_s).year)
   current_href = svr.current_instance_href
   matched_tag = false
@@ -72,7 +86,7 @@ usage unless terminate_after_hours
       if svr.state.to_s == "operational" && tag['name'].to_s.include?(tag_prefix)
         tag_timestamp = Time.parse(tag['name'].split("=").last)
         matched_tag = true
-        puts "Found matching tag: \"#{tag['name'].to_s}" if debug
+        puts "Found matching tag: \"#{tag['name'].to_s} on #{svr.nickname.to_s}" if debug
         break
       end
     end
@@ -88,9 +102,12 @@ usage unless terminate_after_hours
     life_time = tag_timestamp + (terminate_after_hours * 60 * 60) 
     current_time = Time.now
     if (current_time > life_time)
-      puts "Terminating => #{svr.nickname}\n"
-      #svr.stop
-      `echo 'Be sure to lock the server or put "save" somewhere in the nickname to prevent pwnage from the terminator' | mail -s "#{svr.nickname} has been destroyed by the Terminator." terminator@rightscale.com`
+      puts "Tag found on #{svr.nickname} is older than the allowable time.."
+      puts "Terminating => #{svr.nickname}..\n"
+      svr.stop
+      `echo 'Be sure to lock the server or put "save" somewhere in the nickname to prevent pwnage from the terminator' | mail -s "#{svr.nickname} has been destroyed by the Terminator." #{termination_email}`
+    else
+      puts "Tag found is within allowable range, skipping server.."
     end
   end
 end
@@ -135,7 +152,7 @@ end
       ary.save
       ary.terminate_all
       puts "Terminating => #{ary.nickname}\n"
-      `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." terminator@rightscale.com`
+      `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." #{termination_email}`
     end
   end
 end
