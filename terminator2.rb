@@ -2,9 +2,9 @@
 
 # Terminator2, Ryan Cragun
 # Inspired by the original Terminator by Rob Carr
-# Finds and terminates servers and server arrays withing RightScale account based on passed parameters.
+# Finds and terminates servers and server arrays within a RightScale account based on passed parameters.
 # Should be run as a cron daemon at least hourly.
-# Requires rest_connection to be pre-configured with RightScale credentials.
+# Requires rest_connection gem to be pre-configured with RightScale credentials.
 
 require 'rubygems'
 require 'rest_connection'
