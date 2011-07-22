@@ -114,7 +114,7 @@ end
 
 @arrays = Ec2ServerArray.find_all.select { |a| a.active_instances_count != 0 }
 @arrays.each do |ary|
-  unless ary.nickname.downcase.include?(protection_word) || ary.cloud_id == 232
+  next if ary.nickname.downcase.include?(protection_word) || ary.cloud_id > 5 # We don't want to operate on non-ec2 clouds with API 1.0
     @flagged_instances = 0
     instances = ary.instances
     instances.each do |inst|
@@ -153,7 +153,6 @@ end
       ary.terminate_all
       puts "Terminating => #{ary.nickname}\n"
       `echo 'The array was disabled and all instances were terminated because at least 50% of the active instances were at least 24 hours old.  To prevent this please put "save" in the array nickname' | mail -s "The #{ary.nickname} has been disabled and all instances have been destroyed by the Terminator." #{termination_email}`
-    end
   end
 end
 
