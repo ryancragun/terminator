@@ -114,7 +114,7 @@ end
 
 @arrays = Ec2ServerArray.find_all.select { |a| a.active_instances_count != 0 }
 @arrays.each do |ary|
-  next if ary.nickname.downcase.include?(protection_word) || ary.cloud_id > 5 # We don't want to operate on non-ec2 clouds with API 1.0
+  next if ary.nickname.downcase.include?(protection_word) || ary.cloud_id != nil # We don't want to operate on non-ec2 clouds with API 1.0
   @flagged_instances = 0
   instances = ary.instances
   instances.each do |inst|
