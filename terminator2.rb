@@ -61,7 +61,7 @@ end
 usage unless terminate_after_hours
 
 # Main
-@servers = Server.find_all.select { |x| x.state != "booting"}
+@servers = Server.find_all #.select { |x| x.state != "booting"}
 @servers.each do |svr|
   next if svr.nickname.downcase.include?(protection_word)
   next if svr.href.split("/").last.to_i < min_id
