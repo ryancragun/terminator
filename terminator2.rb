@@ -19,6 +19,7 @@ def usage
   puts("    -d: Enables debug logging")
   puts("    -i: Sets the minimum server ID that we'll check")
   puts("    -m: Recipient email address to send termination notifications to")
+  puts("    -a: Account ID you wish to parse")
   exit
 end
 
@@ -31,6 +32,7 @@ current_time = Time.now
 tag_prefix = "terminator:discovery_time="
 min_id = 830000 # We wont check servers that have an ID lesser than this
 termination_email = "terminator@rightscale.com"
+account_id=nil
 
 #Define options
 opts = GetoptLong.new(
@@ -38,7 +40,8 @@ opts = GetoptLong.new(
   [ '--safeword', '-w',  GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--debug', '-d',  GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--id', '-i',  GetoptLong::OPTIONAL_ARGUMENT ],
-  [ '--mailto', '-m',  GetoptLong::OPTIONAL_ARGUMENT ]
+  [ '--mailto', '-m',  GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--account', '-a', GetoptLong::OPTIONAL_ARGUMENT ]
 )
 
 opts.each do |opt, arg|
@@ -53,12 +56,17 @@ opts.each do |opt, arg|
       min_id = arg.to_i
     when '--mailto'
       termination_email = arg
+    when '--account'
+      account_id= arg.to_i
   end
   arg.inspect
 end
 
 # Throw usage warning if hour parameter is missing.
 usage unless terminate_after_hours
+
+# Set account ID if it was passed
+Server.connection.settings[:api_url] = "https://my.rightscale.com/api/acct/#{account_id}" if account_id
 
 # Main
 @servers = Server.find_all #.select { |x| x.state != "booting"}
