@@ -1,0 +1,48 @@
+---
+# Minimum amount of time an object must be running to qualify for termination
+:server_hours: 24
+:volume_hours: 168
+:snapshot_hours: 672
+:array_hours: 24
+
+# Tag namespace that Terminator can use to track objects
+:tag: terminator
+
+# An Array of safe words that prevents an object from being shut down or deleted
+# Must be included in the object nickname or a tag with your terminator Tag namespace
+# tag eg: terminator:save=true, terminator:production=true
+# Nickname eg: "DB 1 save", "DB 1 production"
+:safe_words: 
+  - save
+  - production
+
+# Whitelist tags that prevent termination of an object without terminator Tag namespace.  
+# Must match the entire tag namespace and predicate.
+:whitelist:
+  - rs_backup=committed
+  - database:active=true
+  
+# Blacklist tags force any object with the entire Tag namespace and predicate to be deleted.
+# Blacklist tags supersedes all other options, be careful!  
+:blacklist:
+  - rs_launch:type=auto
+
+# Enable or disable email notifcations to user who launched Server/ServerArray
+:user_email: true
+
+# Email address to send all termination notifications
+:admin_email: admin@domain.com
+
+# Enable or disable all email notifications
+:disable_user_email: false
+:disable_admin_email: false
+
+# An Array of all accounts on which the Terminator should run
+:account_ids:
+  - 5679
+  - 1235
+
+# Email address and password of user that Terminator will act as.
+# This is not required if you've already configured ~/.rest_api_config.yaml
+:terminator_login: terminator@domain.com
+:terminator_password: 123password$%^

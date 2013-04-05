@@ -1,0 +1,9 @@
+---
+:server_hours: 24
+:volume_hours: 168
+:snapshot_hours: 672
+:safe_words: 
+  - save
+:user_email: true
+:disable_email: false
+:tag: terminator

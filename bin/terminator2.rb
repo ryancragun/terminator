@@ -12,6 +12,7 @@ require 'time'
 require 'trollop'
 require 'net/smtp'
 require 'resolv'
+require 'logger'
 
 # Parse options
 @opts = Trollop::options do
@@ -151,6 +152,33 @@ def send_email(opts={})
   end
 end
 
+# Terminate Snapshots
+#
+#
+#
+
+# Terminate Volumes
+def terminate_ebs_volumes
+  save_tag = "#{@opts[:tag]}:#{@opts[:safe_word]}"
+  terminator_tag = "#{@opts[:tag]}:discovery_time"
+  @volumes = Ec2EbsVolume.find_all.select { |v| v.aws_status == "available"}
+  @volumes.each do |vol|
+    next if vol.nickname.include?(@opts[:safe_word])
+    vol.tags.each do |tag|
+      @save = tag.include?(save_tag) ? true : false
+      @matched_tag = tag.include?(terminator_tag) ? tag : false
+      break if @matched_tag or @save
+    end
+    next if @save
+    if @matched_tag
+      life_time = (Time.parse(@matched_tag.split("=")[1]) + (@opts[:hours].to_i * 60 * 60)) 
+      vol.destroy unless lifetime > Time.now
+    else
+      vol.add_tags(["#{termianator_tag}=#{Time.now}"])
+    end
+  end
+end
+
 # Terminate Servers
 def terminate_servers
   @servers = Server.find_all #.select { |x| x.state != "booting"}
@@ -166,7 +194,7 @@ def terminate_servers
       if svr.state.to_s == "stopped"
         next_tags = Tag.search_by_href(svr.href)
         next_tags.each do |tag|
-          if tag['name'].include?("#{@opts[:tag]}:#{@opts[:safe_word]}") && svr.state.to_s == "stopped"
+          if tag['name'].include?("#{@opts[:tag]}:discovery_time") && svr.state.to_s == "stopped"
             Tag.unset(svr.href,[tag['name'].to_s])
             log.debug("Deleting tag: \"#{tag['name'].to_s}\" on stopped server")
           end
@@ -174,7 +202,7 @@ def terminate_servers
       else
         current_tags = Tag.search_by_href(current_href)
         current_tags.each do |tag|
-          if svr.state.to_s == "operational" && tag['name'].to_s.include?("#{@opts[:tag]}:#{@opts[:safe_word]}")
+          if svr.state.to_s == "operational" && tag['name'].to_s.include?("#{@opts[:tag]}:discovery_time")
             tag_timestamp = Time.parse(tag['name'].split("=")[1])
             matched_tag = true
             log.debug("Found matching tag: \"#{tag['name'].to_s} on #{svr.nickname.to_s}")
@@ -184,7 +212,7 @@ def terminate_servers
       end 
           
       unless matched_tag || svr.state.to_s == "stopped"
-        tag_contents = ["#{@opts[:tag]}:#{@opts[:safe_word]}=#{current_time.to_s}"]
+        tag_contents = ["#{@opts[:tag]}:discovery_time=#{current_time.to_s}"]
         log.debug("No tag found for: \"#{svr.nickname.to_s}\", setting tag now...")
         Tag.set(current_href, tag_contents)
       end
@@ -216,14 +244,14 @@ def terminate_ec2_arrays
       local_tags = Tag.search_by_href(inst['href'])
       #check for a match
       local_tags.each do |tag|
-        if tag['name'].include?("#{@opts[:tag]}:#{@opts[:safe_word]}")
+        if tag['name'].include?("#{@opts[:tag]}:discovery_time")
           matched_tag = tag['name'].to_s
           log.debug("Found matching tag #{matched_tag} on #{inst['nickname']}")
         end
       end
       #set terminator tag if no match exists
       if matched_tag == nil
-        tag_contents = ["#{@opts[:tag]}:#{@opts[:safe_word]}=#{current_time.to_s}"]
+        tag_contents = ["#{@opts[:tag]}:discovery_time=#{current_time.to_s}"]
         Tag.set(inst['href'], tag_contents)
         log.debug("No tag found for instance #{inst['nickname']}, setting tag now...")
       end
