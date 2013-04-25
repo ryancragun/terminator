@@ -1,4 +1,8 @@
 ---
+# Example Terminator config
+# Terminator checks for rs_terminator.yaml in ~/.rs_terminator/ or /etc/rs_terminator/
+# You can also supply values when initializing a class or by using the binary that parses options for you
+
 # Minimum amount of time an object must be running to qualify for termination
 :server_hours: 24
 :volume_hours: 168
@@ -16,37 +20,41 @@
   - save
   - production
 
-# Whitelist tags that prevent termination of an object without terminator Tag namespace.  
-# Must match the entire tag namespace and predicate.
+# TODO: Whitelist and Blacklists aren't yet supported
+# Whitelist tags that prevent termination of an object without terminator Tag namespace
+# Must match the entire tag namespace and predicate
 :whitelist:
   - rs_backup=committed
   - database:active=true
   
-# Blacklist tags force any object with the entire Tag namespace and predicate to be deleted.
+# Blacklist tags force any object with the entire Tag namespace and predicate to be deleted
 # Blacklist tags supersedes all other options, be careful!  
 :blacklist:
   - rs_launch:type=auto
 
-# Enable or disable email notifcations to user who launched Server/ServerArray
-:user_email: true
-
 # Email address to send all termination notifications
 :admin_email: admin@domain.com
+:admin_cc_list:
+  - it@domain.com
+  - management@domain.com
 
 # Enable or disable all email notifications
 :disable_user_email: false
 :disable_admin_email: false
 
+# Configure local mail server
+:mail_server: :sendmail
+:mail_server_location: /usr/sbin/sendmail
+
 # An Array of all accounts on which the Terminator should run
 :account_ids:
-  - 5679
-  - 1235
+  - 5678
+  - 1234
 
-# Email address and password of user that Terminator will act as.
-# This is not required if you've already configured ~/.rest_api_config.yaml
-:terminator_login: terminator@domain.com
-:terminator_password: 123password$%^
+# Email address the Terminator email notifications will sent from
+:terminator_email: terminator@domain.com
 
 # ServerArray kill threshold.  If the number of instances older than :array_hours is
 # greater than the :array_threshold the array will be disabled and instances terminated.
 :array_threshold: 50%
+                        
