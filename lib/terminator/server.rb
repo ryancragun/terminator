@@ -57,7 +57,7 @@ module Terminator
             end
           else
             logger(:info,"Tagging newly discovered Server \"#{svr.nickname}\"")
-            svr.add_tags(["#{@opts[:tag]}:discovery_time=#{Time.now}"])
+            Tag.set(svr.current_instance_href, ["#{@opts[:tag]}:discovery_time=#{Time.now}"])
           end
         end
         unless @opts[:disable_admin_email] || @terminated_servers.empty?
