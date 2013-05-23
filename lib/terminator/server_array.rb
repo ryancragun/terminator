@@ -58,6 +58,7 @@ module Terminator
             ary.terminate_all
             @terminated_arrays << ary
           end
+        @flagged_instances = []
         end
       end
       unless @opts[:disable_admin_email] || @terminated_arrays.empty?
