@@ -10,7 +10,7 @@ Written and maintained by Ryan Cragun /ryan at rightscale dot com/
 ## Configuration
   Configure '~/.rest\_connection/rest\_api\_config.yaml' or '/etc/rest\_connection/rest\_api\_config.yaml' with API credentials
   
-  Configure '~/.rs\_terminator/rs\_terminaotr.yaml' or '/etc/rs\_terminator/rs\_terminator.yaml' with config options.
+  Configure '~/.rs\_terminator/rs\_terminator.yaml' or '/etc/rs\_terminator/rs\_terminator.yaml' with config options.
   
   You can optionally supply parameter values from the command line or when initializing a specific class.
     
