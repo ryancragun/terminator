@@ -1,7 +1,9 @@
 module Terminator
   class ServerTerminator < Terminator
+    attr_accessor :running_servers
     def initialize(override={})
       super
+      @running_servers = []
       @terminated_servers = []
       @opts[:server_hours]=24 unless @opts[:server_hours]
       @opts = @opts.merge!(override) unless override.empty? 
@@ -60,6 +62,9 @@ module Terminator
             Tag.set(svr.current_instance_href, ["#{@opts[:tag]}:discovery_time=#{Time.now}"])
           end
         end
+        @running_servers = Server.find(:all).select { |x| x.state == "operational" || 
+                                                          x.state == "stranded" || 
+                                                          x.state == "booting" }
         unless @opts[:disable_admin_email] || @terminated_servers.empty?
           send_email(generate_admin_message(),@opts[:admin_email]) 
           @opts[:admin_cc_list].each {|a| send_email(generate_admin_message,a)} unless @opts[:admin_cc_list].nil?

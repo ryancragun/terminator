@@ -40,7 +40,9 @@ module Terminator
                   has_safe_tag?(tags)
           ary.instances.each do |inst|
             inst_tags = Tag.search_by_href(inst['href']).map! {|tag| tag['name']}
-            if has_terminator_tag?(inst_tags)
+            if has_safe_tag?(inst_tags)
+              logger :info, "Instance has safe tag, skipping..."
+            elsif has_terminator_tag?(inst_tags)
               lifetime = (get_discovery_time(inst_tags) + (@opts[:array_hours] * 60 * 60)) 
               if lifetime < Time.now
                 logger(:info,"Flagging expired instance in ServerArray: \"#{ary.nickname}\"")
