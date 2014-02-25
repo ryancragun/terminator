@@ -67,7 +67,7 @@ module Terminator
         send_email(generate_message(),@opts[:admin_email]) 
         @opts[:admin_cc_list].each {|a| send_email(generate_admin_message,a)} unless @opts[:admin_cc_list].nil?
       end
-      @terminated_servers = []
+      @terminated_arrays = []
       true
     end
   end
