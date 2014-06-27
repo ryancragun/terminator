@@ -1,6 +1,4 @@
-# A sample Gemfile
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
-# gem "rails"
-gem 'rest_connection'
-gem 'mail'
+# Specify your gem's dependencies in rs_terminator.gemspec
+gemspec

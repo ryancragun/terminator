@@ -1,7 +1,0 @@
-require_relative 'terminator/libs'
-require_relative 'terminator/base'
-require_relative 'terminator/server'
-require_relative 'terminator/server_array'
-require_relative 'terminator/snapshot'
-require_relative 'terminator/volume'
-require_relative 'terminator/patches'

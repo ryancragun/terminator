@@ -1,0 +1,6 @@
+Semicolon:
+  AllowAsExpressionSeparator: true
+MethodLength:
+  Max: 30
+ClassLength:
+  Max: 150
